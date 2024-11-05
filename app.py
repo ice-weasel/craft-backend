@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 import json
 import os
+from flow import create_flow
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -50,7 +51,7 @@ def receive_data():
         
         with open(filepath, 'w') as f:
             json.dump(data, f, indent=2)
-
+        create_flow(filepath)
         # Return success response
         return jsonify({
             "message": "Data received and saved successfully",
@@ -130,3 +131,4 @@ def get_file(filename):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+   

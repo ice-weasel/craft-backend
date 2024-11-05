@@ -1,0 +1,10 @@
+{
+  "doc_type": "pdf,ppt,txt",
+  "llm": "gemini,openai,huggface_inference,groq",
+  "retriever_tools": "default,self_query,multi_query",
+  "web_search_tools": "tavily,duckduckgo",
+  "generic_tools": "wikipedia_search,youtube_search",
+  "embeddings": "gemini,openai,hugging_face",
+  "vector_store": "faiss,chroma",
+  "output_format": "verbose,concise"
+}
