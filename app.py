@@ -32,7 +32,7 @@ def receive_data():
     try:
         # Get JSON data from request
         data = request.get_json()
-        
+        file_path='data.json'
         if not data:
             return jsonify({
                 "error": "No data received",
@@ -52,10 +52,18 @@ def receive_data():
         with open(filepath, 'w') as f:
             json.dump(data, f, indent=2)
         create_flow(filepath)
+        generated_file_path = ('./output_files/rag_system.txt')
+        if os.path.exists(generated_file_path):
+            with open(generated_file_path, 'r') as file:
+                file_contents = file.read()
+        else:
+            file_contents = ""
         # Return success response
         return jsonify({
             "message": "Data received and saved successfully",
             "filename": filename,
+            "generated_file": generated_file_path,
+            "file_content": file_contents,
             "timestamp": timestamp,
             "size": len(json.dumps(data))
         }), 200
