@@ -44,12 +44,18 @@ def create_flow(filepath):
         with open(vector_file, 'r') as file:
             code_lines.extend([line for line in file])
 
+    if config["template"]=="self_rag":
+        template="self_rag"
+    elif config["template"]=="img_search":
+        template="img_search"
+    else:
+        template="custom"
     # Append the contents of the main self_rag.py file
-    with open('./templates/self_rag.py', 'r') as file:
+    with open(r'./templates/{template}.py', 'r') as file:
         code_lines.extend([line for line in file])
     print('reading done')
     # Write the collected lines to the output file
-    output_file = './output_files/rag_system.txt'
+    output_file = './output_files/rag_system.py'
     with open(output_file, 'w') as f:
         f.write('\n'.join(code_lines))
     print('writing done')
