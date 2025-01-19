@@ -11,9 +11,11 @@ def create_flow(filepath):
     if "llm" in config:
         llm_config = config["llm"]
         llm_file = f'./components/llms/{llm_config}.py'
+        key="api_key ={config['llm']}"
         with open(llm_file, 'r') as file:
+            code_lines.extend([key])
             code_lines.extend([line for line in file])
-
+    print('checkpoint2')
     if "doc_type" in config:
         doc_config = config["doc_type"]
         doc_file = f'./components/doc_type/{doc_config}.py'
@@ -44,16 +46,20 @@ def create_flow(filepath):
         with open(vector_file, 'r') as file:
             code_lines.extend([line for line in file])
 
-    if config["template"]=="self_rag":
-        template="self_rag"
-    elif config["template"]=="img_search":
-        template="img_search"
-    else:
-        template="custom"
-    # Append the contents of the main self_rag.py file
-    with open(r'./templates/{template}.py', 'r') as file:
-        code_lines.extend([line for line in file])
-    print('reading done')
+#templates
+    print('checkpoint3')
+    if "template" in config:
+        if config["template"]=="self_rag":
+            template="self_rag"
+        elif config["template"]=="img_search":
+            template="img_search"
+        else:
+            template="custom"
+        # Append the contents of the main self_rag.py file
+        print('checkpoint')
+        with open(r'./templates/{template}.py', 'r') as file:
+            code_lines.extend([line for line in file])
+        print('reading done')
     # Write the collected lines to the output file
     output_file = './output_files/rag_system.py'
     with open(output_file, 'w') as f:
