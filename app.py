@@ -51,7 +51,11 @@ def receive_data():
         with open(filepath, 'w') as f:
             json.dump(data, f, indent=2)
         create_flow(filepath)
-        return jsonify({"message": "Data received successfully", "status": "success"}), 200
+        streamlit_file="./streamlit_template/streamlit_temp.py"
+        subprocess.run(f"streamlit run {streamlit_file}")
+        
+        print("Streamlit process started successfully.")
+        return jsonify({"message": "Hosted!", "port": 8501})
     
     except Exception as e:
         return jsonify({"error": "Server error", "message": str(e)}), 500

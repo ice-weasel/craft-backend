@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from output_files.rag_system import process_workflow
 
 UPLOAD_DIR = "temp_files"
-st.title("RAG Workflow with File Upload")
+st.title("Hosted Workflow")
 
 question = st.text_input("Enter your question:", placeholder="Type your question here...")
 
