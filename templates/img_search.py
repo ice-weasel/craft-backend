@@ -1,123 +1,155 @@
-from langchain_core.messages import HumanMessage
-import base64, httpx
+from typing import List, TypedDict
+from langgraph.graph import END, StateGraph, START
 from langchain_groq import ChatGroq
-import getpass
-import os
-from typing import TypedDict, List, Dict
-from langgraph.graph import Graph
-import numpy as np
+from langchain_core.messages import HumanMessage
 from PIL import Image
-import torch
-from transformers import CLIPProcessor, CLIPModel
-from dataclasses import dataclass
-from langchain_core.runnables import RunnableConfig
+import base64
+from io import BytesIO
+import os
+import httpx
 
-class WorkflowState(TypedDict):
+class ImageState(TypedDict):
+    """
+    Represents the state of our image processing graph.
+    """
     query: str
-    image_paths: List[str]
-    embeddings: Dict[str, np.ndarray]
-    results: List[str]
+    image_path: str
+    mode: str  # 'describe' or 'search'
+    description: str
+    similar_images: List[str]
 
-@dataclass
-class ImageSearchConfig:
-    model_name: str = "openai/clip-vit-base-patch32"
-    similarity_threshold: float = 0.7
-    max_results: int = 5
+def encode_image_to_base64(image_path: str) -> str:
+    """Convert image to base64 string"""
+    with open(image_path, "rb") as image_file:  # Open the file in binary mode
+        image_data = image_file.read()  # Read the binary content
+    return base64.b64encode(image_data).decode("utf-8")
 
-# Initialize CLIP model and processor
-def init_clip():
-    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-    processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-    return model, processor
-
-# Node functions
-def process_query(state: WorkflowState, config: RunnableConfig) -> WorkflowState:
-    """Process the text query and prepare it for embedding"""
-    # Here you might clean or validate the query
-    return state
-
-def generate_embeddings(state: WorkflowState, config: RunnableConfig) -> WorkflowState:
-    """Generate embeddings for both query and images"""
-    model, processor = init_clip()
-    
-    # Process query
-    inputs = processor(text=[state["query"]], return_tensors="pt", padding=True)
-    query_features = model.get_text_features(**inputs)
-    query_embedding = query_features.detach().numpy()
-    
-    # Process images
-    image_embeddings = {}
-    for image_path in state["image_paths"]:
-        try:
-            image = Image.open(image_path)
-            inputs = processor(images=image, return_tensors="pt", padding=True)
-            image_features = model.get_image_features(**inputs)
-            image_embeddings[image_path] = image_features.detach().numpy()
-        except Exception as e:
-            print(f"Error processing image {image_path}: {e}")
-    
-    state["embeddings"] = image_embeddings
-    state["query_embedding"] = query_embedding
-    return state
-
-def calculate_similarities(state: WorkflowState, config: RunnableConfig) -> WorkflowState:
-    """Calculate similarity scores between query and images"""
-    query_embedding = state["query_embedding"]
-    search_config = ImageSearchConfig()
-    
-    similarities = {}
-    for path, embedding in state["embeddings"].items():
-        similarity = np.dot(query_embedding, embedding.T) / (
-            np.linalg.norm(query_embedding) * np.linalg.norm(embedding)
-        )
-        similarities[path] = float(similarity)
-    
-    # Filter and sort results
-    filtered_results = [
-        path for path, score in similarities.items() 
-        if score >= search_config.similarity_threshold
-    ]
-    sorted_results = sorted(
-        filtered_results,
-        key=lambda x: similarities[x],
-        reverse=True
-    )[:search_config.max_results]
-    
-    state["results"] = sorted_results
-    return state
-
-# Build the graph
-def build_image_search_workflow() -> Graph:
-    workflow = Graph()
-    
-    # Define the nodes
-    workflow.add_node("process_query", process_query)
-    workflow.add_node("generate_embeddings", generate_embeddings)
-    workflow.add_node("calculate_similarities", calculate_similarities)
-    
-    # Define the edges
-    workflow.add_edge("process_query", "generate_embeddings")
-    workflow.add_edge("generate_embeddings", "calculate_similarities")
-    
-    # Set the entry point
-    workflow.set_entry_point("process_query")
-    
-    # Compile the graph
-    return workflow.compile()
-
-# Example usage
-def run_image_search(query: str, image_paths: List[str]) -> List[str]:
-    """Run the image search workflow"""
-    workflow = build_image_search_workflow()
-    
-    # Initialize state
-    initial_state = WorkflowState(
-        query=query,
-        image_paths=image_paths,
-        embeddings={},
-        results=[]
+def init_llm(api_key: str):
+    """Initialize Groq LLM"""
+    return ChatGroq(
+        api_key=api_key,
+        model_name="llama-3.2-11b-vision-preview"  # Using text-only model as fallback
     )
+
+def process_image(state: ImageState) -> ImageState:
+    """Process the input image based on mode"""
+    llm = init_llm("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")  # Replace with your API key
     
-    # Run the workflow
-    final_state = workflow.invoke(initial_state)
-    return final_state["results"]
+    # Convert image to base64
+    base64_image = encode_image_to_base64(state['image_path'])
+    
+    if state['mode'] == 'describe':
+        # Generate image description using text-only prompt
+        messages = [
+            HumanMessage(
+                content=[
+        {"type": "text", "text": "describe this image"},
+        {
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+        },
+    ],
+
+            )
+        ]
+        
+        response = llm.invoke(messages)
+        state['description'] = response
+        
+    elif state['mode'] == 'search':
+        # Use text comparison for search
+        messages = [
+            HumanMessage(
+                content=f"Compare this image ({base64_image[:100]}...) with the following description: '{state['query']}'. Rate the similarity from 0 to 100 and explain why."
+            )
+        ]
+        
+        response = llm.invoke(messages)
+        state['similarity_analysis'] = response
+    
+    return state
+
+def search_similar_images(state: ImageState) -> ImageState:
+    """Search for similar images based on text analysis"""
+    if state['mode'] == 'search':
+        similar_images = []
+        
+        image_directory = "./image_store"
+        if os.path.exists(image_directory):
+            llm = init_llm("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")
+            
+            for image_file in os.listdir(image_directory):
+                if image_file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                    image_path = os.path.join(image_directory, image_file)
+                    base64_image = encode_image_to_base64(image_path)
+                    
+                 
+                    messages = [
+                            HumanMessage(
+                                content=[
+                        {"type": "text", "text": "Given an image and a query, strictly respond with only a number from 0 to 100 representing how well they match."},
+                         {"type": "text", "text": state['query']},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                        },
+                    ],
+
+                            )
+                        ]
+                    response = llm.invoke(messages)
+                    try:
+                        similarity_score = float(response.content.strip())
+                        if similarity_score > 70:
+                            similar_images.append(image_path)
+                    except ValueError:
+                        continue
+                    
+                    if len(similar_images) >= 5:
+                        break
+        
+        state['similar_images'] = similar_images
+    
+    return state
+
+def decide_next_step(state: ImageState) -> str:
+    """Decide next step based on mode"""
+    if state['mode'] == 'describe':
+        return END
+    elif state['mode'] == 'search':
+        return 'search_similar_images'
+
+def process_workflow(query: str, image_path: str, mode: str) -> dict:
+    """Main workflow processing function"""
+    # Initialize workflow
+    workflow = StateGraph(ImageState)
+    
+    # Add nodes
+    workflow.add_node('process_image', process_image)
+    workflow.add_node('search_similar_images', search_similar_images)
+    
+    # Add edges
+    workflow.add_edge(START, 'process_image')
+    workflow.add_conditional_edges(
+        'process_image',
+        decide_next_step,
+        {
+            'search_similar_images': 'search_similar_images',
+            END: END
+        }
+    )
+    workflow.add_edge('search_similar_images', END)
+    
+    # Compile and run
+    app = workflow.compile()
+    
+    inputs = {
+        'query': query,
+        'image_path': image_path,
+        'mode': mode,
+        'description': '',
+        'similar_images': []
+    }
+    
+    result = app.invoke(inputs)
+    return result

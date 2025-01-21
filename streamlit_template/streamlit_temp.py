@@ -9,7 +9,7 @@ from output_files.rag_system import process_workflow
 UPLOAD_DIR = "temp_files"
 st.title("Hosted Workflow")
 
-question = st.text_input("Enter your question:", placeholder="Type your question here...")
+question = st.text_input("Search query:", placeholder="")
 
 uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
 

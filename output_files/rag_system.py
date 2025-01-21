@@ -635,7 +635,7 @@ def process_workflow(question, uploaded_file_path):
     workflow.add_edge('retrieve', 'grade_documents')
     workflow.add_conditional_edges('grade_documents', decide_to_generate,{ 'transform_query': 'transform_query','generate': 'generate',}, )
     workflow.add_edge('transform_query', 'retrieve')
-    workflow.add_edge('generate', END)
+    workflow.add_conditional_edges('generate',grade_generation_v_documents_and_question,{'not supported': 'generate','useful': END,'not useful': 'transform_query',}, )
     app = workflow.compile()
     inputs = {'question': question}
     for output in app.stream(inputs):
