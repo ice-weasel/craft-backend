@@ -47,7 +47,7 @@ def receive_data():
         # Save the received data to a file
         filename = f"data_{timestamp}.json"
         filepath = os.path.join(DATA_DIR, filename)
-        
+        print("\n\nytype - ",type(data))
         with open(filepath, 'w') as f:
             json.dump(data, f, indent=2)
         create_flow(filepath)

@@ -30,6 +30,7 @@ class GradeAnswer(BaseModel):
     )
 
 class GraphState(TypedDict):
+    global retriever, rag_chain, retrieval_grader, hallucination_grader, answer_grader, question_rewriter
     """
     Represents the state of our graph.
 
@@ -44,6 +45,7 @@ class GraphState(TypedDict):
     documents: List[str]
 
 def retrieve(state):
+    global retriever, rag_chain, retrieval_grader, hallucination_grader, answer_grader, question_rewriter
     """
     Retrieve documents
 
@@ -61,6 +63,7 @@ def retrieve(state):
     return {"documents": documents, "question": question}
 
 def generate(state):
+    global retriever, rag_chain, retrieval_grader, hallucination_grader, answer_grader, question_rewriter
     """
     Generate answer
 
@@ -79,6 +82,7 @@ def generate(state):
     return {"documents": documents, "question": question, "generation": generation}
 
 def grade_documents(state):
+    global retriever, rag_chain, retrieval_grader, hallucination_grader, answer_grader, question_rewriter
     """
     Determines whether the retrieved documents are relevant to the question.
 
@@ -109,6 +113,7 @@ def grade_documents(state):
     return {"documents": filtered_docs, "question": question}
 
 def transform_query(state):
+    global retriever, rag_chain, retrieval_grader, hallucination_grader, answer_grader, question_rewriter
     """
     Transform the query to produce a better question.
 
@@ -128,6 +133,7 @@ def transform_query(state):
     return {"documents": documents, "question": better_question}
 ### Edges
 def decide_to_generate(state):
+    global retriever, rag_chain, retrieval_grader, hallucination_grader, answer_grader, question_rewriter
     """
     Determines whether to generate an answer, or re-generate a question.
 
@@ -155,6 +161,7 @@ def decide_to_generate(state):
         return "generate"
 
 def grade_generation_v_documents_and_question(state):
+    global retriever, rag_chain, retrieval_grader, hallucination_grader, answer_grader, question_rewriter
     """
     Determines whether the generation is grounded in the document and answers question.
 
@@ -194,16 +201,17 @@ def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
 def process_workflow(question, uploaded_file_path):
-    llm=call_llm(api_key)
+    global retriever, rag_chain, retrieval_grader, hallucination_grader, answer_grader, question_rewriter
+    llm=call_llm("api_key")
     docs=call_doctype(uploaded_file_path)
-    docs_list = [item for sublist in docs for item in sublist]
+    #docs_list = [item for sublist in docs for item in sublist]
 
     text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
         chunk_size=250, chunk_overlap=0
     )
-    doc_splits = text_splitter.split_documents(docs_list)
+    doc_splits = text_splitter.split_documents(docs)
     embeddings=embs()
-    vectorstore=call_vectorstore(embeddings)
+    vectorstore=call_vectorstore(embeddings,doc_splits)
     retriever=call_retriever(vectorstore)
 
 
@@ -275,52 +283,3 @@ def process_workflow(question, uploaded_file_path):
 
 
     workflow = StateGraph(GraphState)
-
-    # Define the nodes
-    workflow.add_node("retrieve", retrieve)  # retrieve
-    workflow.add_node("grade_documents", grade_documents)  # grade documents
-    workflow.add_node("generate", generate)  # generatae
-    workflow.add_node("transform_query", transform_query)  # transform_query
-
-    # Build graph
-    workflow.add_edge(START, "retrieve")
-    workflow.add_edge("retrieve", "grade_documents")
-    workflow.add_conditional_edges(
-        "grade_documents",
-        decide_to_generate,
-        {
-            "transform_query": "transform_query",
-            "generate": "generate",
-        },
-    )
-    workflow.add_edge("transform_query", "retrieve")
-    workflow.add_conditional_edges(
-        "generate",
-        grade_generation_v_documents_and_question,
-        {
-            "not supported": "generate",
-            "useful": END,
-            "not useful": "transform_query",
-        },
-    )
-
-    # Compile
-    app = workflow.compile()
-
-    inputs = {"question": question}
-    for output in workflow.stream(inputs):
-        for key, value in output.items():
-            pprint(f"Node '{key}':")
-    return value["generation"]
-    # Run
-    '''inputs = {"question": "Explain how the different types of agent memory work?"} #user query
-    for output in app.stream(inputs):
-        for key, value in output.items():
-            # Node
-            pprint(f"Node '{key}':")
-            # Optional: print full state at each node
-            # pprint.pprint(value["keys"], indent=2, width=80, depth=None)
-        pprint("\n---\n")
-
-    # Final generation
-    pprint(value["generation"])'''
