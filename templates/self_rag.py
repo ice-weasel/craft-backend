@@ -212,7 +212,7 @@ def process_workflow(question, uploaded_file_path):
     doc_splits = text_splitter.split_documents(docs)
     embeddings=embs()
     vectorstore=call_vectorstore(embeddings,doc_splits)
-    retriever=call_retriever(vectorstore)
+    retriever=call_retriever(llm,vectorstore)
 
 
 

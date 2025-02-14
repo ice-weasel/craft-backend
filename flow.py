@@ -9,7 +9,10 @@ def create_flow(filepath):
     
     # Load and append contents for each component specified in the configuration
     if "llm" in config:
+        print(config["llm"]["llm_name"])
+        #print(config["llm"][0])
         llm_config = config["llm"]["llm_name"].lower()
+        
         #print( config["llm"])
         llm_file = f'./components/llms/{llm_config}.py'
         #key="api_key ={config['llm']}"
@@ -19,6 +22,8 @@ def create_flow(filepath):
     print('checkpoint2')
     if "doc_type" in config:
         doc_config = config["doc_type"].lower()
+        print(config["doc_type"])
+        print("doc_config - ",doc_config)
         doc_file = f'./components/doc_type/{doc_config}.py'
         with open(doc_file, 'r') as file:
             code_lines.extend([line for line in file])

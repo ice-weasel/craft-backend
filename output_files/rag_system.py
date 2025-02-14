@@ -41,7 +41,7 @@ def embs():
     )
 
     return embeddings
-def call_retriever(db):
+def call_retriever(llm,db):
 
     return db.as_retriever()
 from langchain_chroma import Chroma
@@ -485,7 +485,7 @@ def process_workflow(question, uploaded_file_path):
 
     vectorstore=call_vectorstore(embeddings,doc_splits)
 
-    retriever=call_retriever(vectorstore)
+    retriever=call_retriever(llm,vectorstore)
 
 
 

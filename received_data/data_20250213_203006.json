@@ -1,15 +1,14 @@
 {
   "llm": {
-    "llm_name": "Groq",
-    "config": {
-      "apiKey": "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",
-      "temperature": "0",
+    "groq_model": {
+      "apiKey": "23423452342",
+      "temperature": "0.3",
       "isVerbose": "false"
     }
   },
-  "doc_type": "pdf",
-  "embeddings": "hugging_face",
-  "retriever_tools": "basic",
+  "doc_type": "pdf_type",
+  "embeddings": "hugging_face_type_embeddings",
+  "retriever_tools": "multi-query",
   "vector_stores": "chroma_store",
   "prompts": "default",
   "customtext": null,
@@ -20,8 +19,16 @@
       "no": null
     },
     "Retrieve": {
-      "yes": "Generate",
+      "yes": "grade-documents",
       "no": null
+    },
+    "grade-documents": {
+      "yes": "relevancy-checker",
+      "no": null
+    },
+    "relevancy-checker": {
+      "yes": "Generate",
+      "no": "rewrite-node"
     },
     "Generate": {
       "yes": "hallucination-checker",

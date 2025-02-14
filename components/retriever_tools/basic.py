@@ -1,2 +1,2 @@
-def call_retriever(db):
+def call_retriever(llm,db):
     return db.as_retriever()
