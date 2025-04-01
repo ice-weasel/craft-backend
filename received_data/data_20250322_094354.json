@@ -1,0 +1,34 @@
+{
+  "llm": {
+    "groq_model": {
+      "apiKey": "23423452342",
+      "temperature": "0.3",
+      "isVerbose": "false"
+    }
+  },
+  "doc_type": "pdf_type",
+  "embeddings": "hugging_face",
+  "retriever_tools": "basic",
+  "vector_stores": "chroma_store",
+  "prompts": "default",
+  "customtext": null,
+  "template": "custom-template",
+  "flowPaths": {
+    "Start": {
+      "yes": "Retrieve",
+      "no": null
+    },
+    "Retrieve": {
+      "yes": "Generate",
+      "no": null
+    },
+    "Generate": {
+      "yes": "Stop",
+      "no": null
+    },
+    "Stop": {
+      "yes": null,
+      "no": null
+    }
+  }
+}
